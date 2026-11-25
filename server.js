@@ -3,6 +3,7 @@
 const express = require('express');
 const cors = require('cors');
 const crypto = require('crypto');
+const path = require('path');
 
 const { ADMIN_USER, ADMIN_PASS } = process.env;
 if (!ADMIN_USER || !ADMIN_PASS) {
@@ -77,6 +78,9 @@ function limitar(chave, max, janelaMs) {
 const TIPOS = new Set(['visita', 'ping', 'clique', 'produto', 'zoom', 'compartilhar', 'cadastro', 'pedido']);
 
 app.get('/', (_, res) => res.send('Servidor Shopping Night online'));
+
+// Painel de controle: abre em  /painel  (arquivo docs/index.html deste repositório)
+app.use('/painel', (req, res, next) => { res.set('Cache-Control', 'no-store'); next(); }, express.static(path.join(__dirname, 'docs')));
 
 app.post('/api/evento', async (req, res) => {
   const o = req.headers.origin;
