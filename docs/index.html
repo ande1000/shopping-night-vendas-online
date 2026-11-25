@@ -87,7 +87,7 @@ footer a{color:#60a5fa}.btn{background:#16a34a;color:#fff;border:0;border-radius
 <button onclick="go('cfg');pop()">Configurações</button><button onclick="sair()">Sair da conta</button></div>
 </header>
 <div id="v"></div>
-<footer><svg class="i" style="color:var(--g)"><use href="#pulse"/></svg> Sistema de Monitoramento Ativo · Atualização Automática a cada 10 segundos
+<footer><svg class="i" style="color:var(--g)"><use href="#pulse"/></svg> Sistema de Monitoramento Ativo · Atualização automática a cada 10 segundos enquanto você usa o painel <span id="pz" style="color:#f59e0b;display:none">⏸ Pausado por falta de atividade — mexa o mouse para continuar</span>
 <span class="sp"></span><svg class="i"><use href="#globe"/></svg> Seu Site: <a href="https://shopping-night.vercel.app/" target="_blank" rel="noopener">https://shopping-night.vercel.app/</a>
 <button class="btn" onclick="rel()"><svg class="i"><use href="#chart"/></svg> Gerar Relatório</button></footer>
 </main>
@@ -168,7 +168,15 @@ async function carregar(){if(!tk)return;
  primeira=false;if(j.eventos.length)ultId=Math.max(ultId,...j.eventos.map(e=>e.id));
  $("ev").innerHTML=logs.slice(0,4).join("<br>");
  $("up").textContent=new Date(j.atualizado).toLocaleString("pt-BR");render()}catch(e){$("up").textContent="Sem conexão com o servidor"}}
-function iniciar(){render();if(tk)carregar();else login();setInterval(carregar,10000)}
+// Economiza horas do Render: só atualiza com a aba aberta e com atividade (mouse, toque, teclado) nos últimos 60 segundos
+let ult=Date.now(),pausado=false,busy=false;
+const ativo=()=>!document.hidden&&Date.now()-ult<60000;
+async function atualizar(){if(busy)return;busy=true;try{await carregar()}finally{busy=false}}
+function acordar(){pausado=false;$("pz").style.display="none";if(tk)atualizar()}
+["mousemove","mousedown","keydown","touchstart","scroll","wheel"].forEach(e=>addEventListener(e,()=>{ult=Date.now();if(pausado)acordar()},{passive:true}));
+document.addEventListener("visibilitychange",()=>{if(!document.hidden){ult=Date.now();if(pausado)acordar()}});
+function iniciar(){render();if(tk)atualizar();else login();
+ setInterval(()=>{if(!tk)return;if(ativo())atualizar();else if(!pausado){pausado=true;$("pz").style.display="inline"}},10000)}
 setInterval(()=>{S.vis.forEach(v=>{if(v.on)v.t++});document.querySelectorAll("[data-vi]").forEach(e=>e.textContent=fmt(S.vis[e.dataset.vi].t))},1000);
 function rel(){const o=ORI.map((x,i)=>`${x}: ${S.ori[i]}%`).join(" | "),d=DEV.map((x,i)=>`${x}: ${S.dev[i]}%`).join(" | ");
  const t=`RELATÓRIO — SHOPPING NIGHT\nGerado em: ${new Date().toLocaleString("pt-BR")}\nSite: https://shopping-night.vercel.app/\n\nVisitantes online: ${onl()}\nTotal de acessos: ${tot()}\nCliques: ${S.clicks}\nLinks compartilhados: ${S.share}\nTempo médio: ${fmt(avg())}\n\nVISITANTES\n${S.vis.map(v=>`- ${v.n} (${v.b}, ${v.c}) ${DEV[v.d]} ${fmt(v.t)}`).join("\n")}\n\nPRODUTOS MAIS VISTOS\n${[...S.pages].sort((a,b)=>b[1]-a[1]).map(p=>`- ${p[0]}: ${p[1]}`).join("\n")}\n\nORIGEM: ${o}\nDISPOSITIVOS: ${d}\n\nPEDIDOS\n${S.orders.map(x=>`- ${x.u}: ${x.p} — R$ ${x.v.toFixed(2)} (${x.h})`).join("\n")}\n\nATIVIDADE\n${logs.join("\n")||"-"}\n`;
